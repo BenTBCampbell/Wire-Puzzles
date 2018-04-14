@@ -245,6 +245,7 @@ gameScene.placeRoomTileAt = function (x, y) {
     if (this.timeSinceTilePlaced <= this.tilePlaceCooldown) return;
     this.map.putTileAt(this.drawTile, x, y, false, 'room');
     this.timeSinceTilePlaced = 0;
+    this.updateWires();
 };
 
 gameScene.toggleWireAt = function(x, y) {
@@ -253,23 +254,23 @@ gameScene.toggleWireAt = function(x, y) {
         this.map.getTileAt(x, y).break();
     }
     else {
-        let tile = this.map.putTileAt(0, x, y)
+        let tile = this.map.putTileAt(0, x, y);
         Wire.call(tile);
     }
 };
 
 //intended to be called on a tile
 function Wire() {
-    this.power = -1; //higher = farther from source, -1 = unpowered
+    this.powered = false; //higher = farther from source, -1 = unpowered
     this.north = false;
     this.south = false;
     this.east = false;
     this.west = false;
 
-    this.debugText = gameScene.add.text(this.tilemap.tileToWorldX(this.x+0.5), this.tilemap.tileToWorldY(this.y+0.5), -1, {
-        color: 'black'
-    });
-    this.debugText.setVisible(gameScene.debugModeEnabled);
+    // this.debugText = gameScene.add.text(this.tilemap.tileToWorldX(this.x+0.5), this.tilemap.tileToWorldY(this.y+0.5), -1, {
+    //     color: 'black'
+    // });
+    // this.debugText.setVisible(gameScene.debugModeEnabled);
     
     var connectableTiles = [gameScene.roomTiles.input, gameScene.roomTiles.output];
     var tileDirectionIndicies = {
@@ -281,63 +282,17 @@ function Wire() {
         'NE': 9,  'NEW': 10, 'NW': 11
     }
 
-    this.update = function() {
-        console.log(this.x, this.y);
-
-        //update connections
-        this.north = this.isConnectableWith(this.x, this.y-1);
-        this.south = this.isConnectableWith(this.x, this.y+1);
-        this.east = this.isConnectableWith(this.x+1, this.y);
-        this.west = this.isConnectableWith(this.x-1, this.y);
-
-        this.index = this.getDirectionIndex();
-
-        let oldPower = this.power;
-
-        //check for neighboring outlets
-        let foundPoweringNeighbor = false;
-        this.getRoomNeighbors().forEach(function(tile) {
-            if (tile.index === gameScene.roomTiles.output) {
-                this.power = 0;
-                foundPoweringNeighbor = true;
+    this.findPathToPowerSource = function(checkedTiles) {
+        if(checkedTiles.indexOf(this) !== -1) return false;
+        if (this.hasNeighboringPowerSource()) return true;
+        else {
+            checkedTiles.push(this);
+            var neighbors = this.getWireNeighbors();
+            for (var i=0; i<neighbors.length; i++) {
+                if (neighbors[i].findPathToPowerSource(checkedTiles)) return true;
             }
-        }, this);
-
-        //get power from neighboring wires
-        this.getWireNeighbors().forEach(function(wire) {
-            if (wire.power === this.power - 1 && wire.power !== -1) foundPoweringNeighbor = true;
-            if (wire.power !== -1  && (wire.power < this.power-1 || this.power === -1)) {
-                this.power = wire.power + 1;
-                foundPoweringNeighbor = true;
-            }
-        }, this);
-
-
-        if (!foundPoweringNeighbor) {
-            this.power = -1;
         }
-
-        //update neighbors
-        this.getWireNeighbors().forEach(function(wire) {
-            if (this.power === -1) {
-                if (wire.power === oldPower + 1) {
-                    //update wire that was being powered by this
-                    wire.update();
-                }
-            } else {
-                if (wire.power === -1 || wire.power > this.power+1) {
-                    //update wire that should be powered by this
-                    wire.update();
-                }
-            }
-        }, this);
-
-        if (gameScene.debugModeEnabled) this.debugText.setText(this.power);
-
-        //set color
-        if (this.power >= 0) this.tint = gameScene.colors.powered_blue;
-        else this.tint = gameScene.colors.unpowered_blue;
-
+        return false;
     }
 
     this.isConnectableWith = function(x, y) {
@@ -394,19 +349,46 @@ function Wire() {
         return neighbors;
     }
 
-    this.break = function() {
-        this.index = -1;
-        // this.setPower(-1);
-        this.power = -1;
-        this.getWireNeighbors().forEach(function(wire) {
-            wire.update();
-        });
-        this.tilemap.putTileAt(-1, this.x, this.y, null, 'wires');
-        this.debugText.destroy();
+    this.hasNeighboringPowerSource = function() {
+        var neighbors = this.getRoomNeighbors();
+        for(var i=0; i<neighbors.length; i++) {
+            if (neighbors[i].index === gameScene.roomTiles.output) return true;
+        }
+        return false;
     }
 
-    this.update();
-    this.getWireNeighbors().forEach(function(wire) {
-        wire.update();
-    });
+    this.break = function() {
+        this.tilemap.putTileAt(-1, this.x, this.y, null, 'wires');
+        gameScene.updateWires();
+    }
+
+    this.updateColor = function() {
+        //set color
+        if (this.powered === true)
+            this.tint = gameScene.colors.powered_blue;
+        else
+            this.tint = gameScene.colors.unpowered_blue;
+    }
+
+     this.updateConnections = function() {
+        this.north = this.isConnectableWith(this.x, this.y - 1);
+        this.south = this.isConnectableWith(this.x, this.y + 1);
+        this.east = this.isConnectableWith(this.x + 1, this.y);
+        this.west = this.isConnectableWith(this.x - 1, this.y);
+        this.index = this.getDirectionIndex();
+    }
+
+    gameScene.updateWires();
+}
+
+gameScene.updateWires = function() {
+    var wires = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'wires');
+    for (var i=0; i < wires.length; i++) {
+        wires[i].updateConnections();
+    }
+    for (var i=0; i < wires.length; i++) {
+        var checkedTiles = []
+        wires[i].powered = wires[i].findPathToPowerSource(checkedTiles);
+        wires[i].updateColor();
+    }
 }
