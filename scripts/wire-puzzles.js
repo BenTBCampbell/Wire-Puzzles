@@ -1,6 +1,7 @@
 let gameScene = new Phaser.Scene('Game');
       
-let config = {
+let config = 
+{
     type: Phaser.AUTO, // Phaser will decide how to render (WebGL or Canvas)
     width: 1280,
     height: 720,
@@ -12,7 +13,8 @@ let game = new Phaser.Game(config);
 
 
 //set parameters
-gameScene.init = function() {
+gameScene.init = function () 
+{
     this.playerSpeed = 3;
     this.enemySpeed = 2;
     this.enemyMaxY = 280;
@@ -29,7 +31,8 @@ gameScene.init = function() {
 
 
 //load game assets
-gameScene.preload = function() {
+gameScene.preload = function () 
+{
     this.load.image('room tiles',           'images/room-tiles.png');
     this.load.spritesheet('room spritesheet', 'images/room-tiles.png', {frameWidth: this.tileSize, frameHeight: this.tileSize});
     this.load.image('powered wire tiles',   'images/powered-wire-tiles.png');
@@ -40,21 +43,28 @@ gameScene.preload = function() {
 
 
 //executed once after preload. Used to set up game entities.
-gameScene.create = function() {
+gameScene.create = function () 
+{
 
     //keyboard
     let keyCodes = Phaser.Input.Keyboard.KeyCodes;
-    let keysToRemember = ['W', 'S', 'A', 'D', 'Q', 'E', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SPACE'];
+    let keysToRemember = ['W', 'S', 'A', 'D', 'Q', 'E', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SPACE', 
+                          'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'ZERO'];
+    this.numberStrings = {
+        'ONE': 1, 'TWO': 2, 'THREE': 3, 'FOUR': 4, 'FIVE': 5, 'SIX': 6, 'SEVEN': 7, 'EIGHT': 8, 'NINE': 9, 'ZERO': 0
+    }
     let keyCodesToRemember = {};
     let key = '';
-    for (var i = 0; i < keysToRemember.length; i++) {
+    for (var i = 0; i < keysToRemember.length; i++) 
+    {
         key = keysToRemember[i]
         keyCodesToRemember[key] =  Phaser.Input.Keyboard.KeyCodes[key];
     }
     this.keys = this.input.keyboard.addKeys(keyCodesToRemember);
 
     //colors
-    this.colors = {
+    this.colors = 
+    {
         powered_blue: Phaser.Display.Color.GetColor(232,143,61),
         unpowered_blue: Phaser.Display.Color.GetColor(166,72,44)
     }
@@ -65,7 +75,8 @@ gameScene.create = function() {
     // this.cameras.main.setZoom(4);
     // this.cameras.main.setScroll(-config.width, -config.height);
 
-    var controlConfig = {
+    var controlConfig = 
+    {
         camera: this.cameras.main,
         left: this.keys.LEFT,
         right: this.keys.RIGHT,
@@ -87,7 +98,8 @@ gameScene.create = function() {
     });
 
     var roomTileset = this.map.addTilesetImage('room tiles');
-    this.roomTiles = {
+    this.roomTiles = 
+    {
         floor: 0,
         wall: 1,
         output: 2,
@@ -110,12 +122,7 @@ gameScene.create = function() {
     this.mapScaleGroup.add(wires);
     Phaser.Actions.ScaleXY(this.mapScaleGroup.getChildren(), this.tileScale, this.tileScale);
 
-    this.marker = this.add.graphics();
-    this.marker.lineStyle(3, 0x000000, 1);
-    this.marker.strokeRect(0, 0, this.map.tileWidth*(this.tileScale+1), this.map.tileHeight*(this.tileScale+1));
-
     //pick tile gui
-    this.tile = this.add.sprite(900, 40, 'room spritesheet', 2);
     let scaledTileSize = this.tileSize*(this.tileScale+1);
     let mapEdge = this.map.tileToWorldX(this.map.width) + 50;
     var tileSelectGroup = this.add.group([
@@ -134,85 +141,59 @@ gameScene.create = function() {
     ]);
     // Phaser.Actions.SetOrigin(tileSelectGroup.getChildren(), 0, 0);
     Phaser.Actions.IncXY(tileSelectGroup.getChildren(), scaledTileSize/2, scaledTileSize/2);
-    Phaser.Actions.Call(tileSelectGroup.getChildren(), function(tile) {
+    Phaser.Actions.Call(tileSelectGroup.getChildren(), function (tile) 
+    {
         tile.setInteractive();
-        tile.on("pointerdown", function(pointer) {
+        tile.on("pointerdown", function (pointer) 
+        {
             this.scene.drawTile = this.frame.name;
             this.scene.selectedTileMarker.setPosition(this.getTopLeft().x, this.getTopLeft().y);
+            this.scene.markerSprite.setFrame(this.frame.name);
             // this.scene.selectedTileMarker.setPosition(100, 100);
         });
     }, this);
 
+    //markers
     let selectedTileCoords = tileSelectGroup.getChildren()[this.drawTile].getTopLeft();
     this.selectedTileMarker = this.add.graphics();
     this.selectedTileMarker.lineStyle(5, 0x000000, 1);
     this.selectedTileMarker.strokeRect(0, 0, this.map.tileWidth*(this.tileScale+1), this.map.tileHeight*(this.tileScale+1));
     this.selectedTileMarker.setPosition(selectedTileCoords.x, selectedTileCoords.y);
 
+    this.markerSprite = this.add.sprite(0, 0, 'room spritesheet', this.drawTile);
+    this.markerSprite.setOrigin(0, 0);
+    this.markerSprite.setScale(this.tileScale+1);
+    this.markerSprite.setAlpha(0.75);
+
     //player
-    this.player = this.add.sprite(this.map.tileToWorldX(2.5), this.map.tileToWorldY(2.5), 'player');
-    this.player.setScale(this.tileScale+1);
-    this.player.moveDirection = '';
-    this.player.speed = this.playerSpeed;
-
-    this.player.update = function() {
-        // console.log(this.directionMoving);
-        let tileX = this.scene.map.tileToWorldX(this.scene.map.worldToTileX(this.x)+0.5);
-        let tileY = this.scene.map.tileToWorldY(this.scene.map.worldToTileY(this.y)+0.5);
-        if (this.x !== tileX) {
-            let dx = Math.min(this.speed, Math.abs(tileX - this.x));
-            dx *= (this.directionMoving === 'E') ? -1 : 1;
-            this.x += dx;
-        }
-        else if (this.y !== tileY) {
-            let dy = Math.min(this.speed, Math.abs(tileY - this.y));
-            dy *= (this.directionMoving === 'N') ? -1 : 1;
-            this.y += dy;
-        }
-        else if (this.x === tileX && this.y === tileY) {
-            this.directionMoving = '';
-        };
-        // if (this.directionMoving === 'N') {
-        //     if(this.x != tileX)
-        // }
-    }
-
-    this.player.move = function(dir) {
-        //update all wires
-        if (this.directionMoving !== '') return;
-        let dx = 0;
-        let dy = 0;
-        if      (dir === 'N') dy = -1;
-        else if (dir === 'S') dy = 1;
-        else if (dir === 'E') dx = -1;
-        else if (dir === 'W') dx = 1;
-        else return;//invalid dir
-
-        let tileX = this.scene.map.worldToTileX(this.x)+dx;
-        let tileY = this.scene.map.worldToTileY(this.y)+dy;
-        let tile =this.scene.map.getTileAt(tileX, tileY, true, 'room');
-        if (tile === null ||
-            !(tile.index === this.scene.roomTiles.floor || 
-              tile.index === this.scene.roomTiles.softTWall)) return; //will hit wall;
-
-        this.directionMoving = dir;
-        this.x += this.speed*dx;
-        this.y += this.speed*dy;
-    };
+    this.player = new Player(this.map.tileToWorldX(2.5), this.map.tileToWorldY(2.5));
+    this.add.existing(this.player);
+    // this.player = new Phaser.GameObjects.Sprite(gameScene, 0, 0, 'player');
 
 };
 
 
-gameScene.update = function(time, delta) {
+gameScene.update = function (time, delta) 
+{
 
     // this.camControls.update(delta);
+    for (var string in this.numberStrings) 
+    {
+        if (this.keys[string].isDown) 
+        {
+            var frame = this.numberStrings[string]-1;
+            this.drawTile = frame;
+            // this.scene.selectedTileMarker.setPosition(this.getTopLeft().x, this.getTopLeft().y);
+            this.markerSprite.setFrame(frame);
+        }
+    }
 
     var mousePos = this.input.activePointer.positionToCamera(this.cameras.main);
     //get world coords of tile mouse is in.
     var mouseTileX = Math.max(Math.min(this.map.worldToTileX(mousePos.x), this.map.width-1), 0);
     var mouseTileY = Math.max(Math.min(this.map.worldToTileY(mousePos.y), this.map.height-1), 0);
-    this.marker.x = this.map.tileToWorldX(mouseTileX);
-    this.marker.y = this.map.tileToWorldY(mouseTileY);
+    this.markerSprite.x = this.map.tileToWorldX(mouseTileX);
+    this.markerSprite.y = this.map.tileToWorldY(mouseTileY);
 
     if(this.previousSelectedTilePos.x != mouseTileX || this.previousSelectedTilePos.y != mouseTileY) this.timeSinceTilePlaced = this.tilePlaceCooldown;
     this.previousSelectedTilePos.x = mouseTileX;
@@ -230,7 +211,8 @@ gameScene.update = function(time, delta) {
 
     //move player
     this.player.update();
-    if (this.keys.SPACE.isDown && this.player.directionMoving === '' && this.timeSinceTilePlaced >= this.tilePlaceCooldown) {
+    if (this.keys.SPACE.isDown && this.player.directionMoving === '' && this.timeSinceTilePlaced >= this.tilePlaceCooldown) 
+    {
         this.toggleWireAt(this.map.worldToTileX(this.player.x), this.map.worldToTileY(this.player.y));
         this.timeSinceTilePlaced = 0;
     }
@@ -241,79 +223,201 @@ gameScene.update = function(time, delta) {
     else if (this.keys.RIGHT.isDown || this.keys.D.isDown) this.player.move('W');
 };
 
-gameScene.placeRoomTileAt = function (x, y) {
+gameScene.placeRoomTileAt = function (x, y) 
+{
     if (this.timeSinceTilePlaced <= this.tilePlaceCooldown) return;
     this.map.putTileAt(this.drawTile, x, y, false, 'room');
     this.timeSinceTilePlaced = 0;
     this.updateWires();
 };
 
-gameScene.toggleWireAt = function(x, y) {
+gameScene.toggleWireAt = function (x, y) 
+{
     this.map.setLayer('wires');
-    if (this.map.getTileAt(x, y) != null) {
+    if (this.map.getTileAt(x, y) != null) 
+    {
         this.map.getTileAt(x, y).break();
     }
-    else {
-        let tile = this.map.putTileAt(0, x, y);
-        Wire.call(tile);
+    else 
+    {
+        var wire = new Wire(x, y);
+        wire.addToLayer();
     }
 };
 
-//intended to be called on a tile
-function Wire() {
-    this.powered = false; //higher = farther from source, -1 = unpowered
-    this.north = false;
-    this.south = false;
-    this.east = false;
-    this.west = false;
+gameScene.updateWires = function () 
+{
+    var wires = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'wires');
+    for (var i=0; i < wires.length; i++) 
+    {
+        wires[i].updateConnections();
+    }
+    for (var i=0; i < wires.length; i++) 
+    {
+        var checkedTiles = []
+        wires[i].powered = wires[i].findPathToPowerSource(checkedTiles);
+        wires[i].updateColor();
 
-    // this.debugText = gameScene.add.text(this.tilemap.tileToWorldX(this.x+0.5), this.tilemap.tileToWorldY(this.y+0.5), -1, {
-    //     color: 'black'
-    // });
-    // this.debugText.setVisible(gameScene.debugModeEnabled);
+        if(wires[i].hasNeighboringPowerInput() && wires[i].powered) 
+        {
+            this.updatePoweredTiles();
+        }
+    }
+}
+
+gameScene.updatePoweredTiles = function () 
+{
+    var tiles = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'room');
+    for (var i=0; i<tiles.length; i++) 
+    {
+        if (tiles[i].index === this.roomTiles.hardTWall) tiles[i].index = this.roomTiles.softTWall;
+        else if (tiles[i].index === this.roomTiles.softTWall) tiles[i].index = this.roomTiles.hardTWall;
+    }
+}
+
+var Player = new Phaser.Class({
+
+    Extends: Phaser.GameObjects.Sprite,
+
+    initialize: function(x, y)
+    {
+        Phaser.GameObjects.Sprite.call(this, gameScene, x, y, 'player');
+        this.setScale(gameScene.tileScale+1);
+        this.moveDirection = '';
+        this.speed = gameScene.playerSpeed;
+    },
+
+    update: function () 
+    {
+        // console.log(this.directionMoving);
+        let tileX = this.scene.map.tileToWorldX(this.scene.map.worldToTileX(this.x)+0.5);
+        let tileY = this.scene.map.tileToWorldY(this.scene.map.worldToTileY(this.y)+0.5);
+        if (this.x !== tileX) 
+        {
+            let dx = Math.min(this.speed, Math.abs(tileX - this.x));
+            dx *= (this.directionMoving === 'E') ? -1 : 1;
+            this.x += dx;
+        }
+        else if (this.y !== tileY) 
+        {
+            let dy = Math.min(this.speed, Math.abs(tileY - this.y));
+            dy *= (this.directionMoving === 'N') ? -1 : 1;
+            this.y += dy;
+        }
+        else if (this.x === tileX && this.y === tileY) 
+        {
+            this.directionMoving = '';
+        }
+    },
+
+    move: function (dir) 
+    {
+        //update all wires
+        if (this.directionMoving !== '') return;
+        let dx = 0;
+        let dy = 0;
+        if      (dir === 'N') dy = -1;
+        else if (dir === 'S') dy = 1;
+        else if (dir === 'E') dx = -1;
+        else if (dir === 'W') dx = 1;
+        else return;//invalid dir
+
+        let tileX = this.scene.map.worldToTileX(this.x)+dx;
+        let tileY = this.scene.map.worldToTileY(this.y)+dy;
+        let tile =this.scene.map.getTileAt(tileX, tileY, true, 'room');
+        if (tile === null ||
+            !(tile.index === this.scene.roomTiles.floor || 
+                tile.index === this.scene.roomTiles.softTWall)) return; //will hit wall;
+
+        this.directionMoving = dir;
+        this.x += this.speed*dx;
+        this.y += this.speed*dy;
+    }
     
-    var connectableTiles = [gameScene.roomTiles.input, gameScene.roomTiles.output];
-    var tileDirectionIndicies = {
-        '': 0,
-        'N': 1,   'S': 1,    'NS': 1,
-        'E': 2,   'W': 2,    'EW': 2,
-        'SE': 3,  'SEW': 4,  'SW': 5,
-        'NSE': 6, 'NSEW': 7, 'NSW': 8,
-        'NE': 9,  'NEW': 10, 'NW': 11
+});
+
+var PuzzleTile = new Phaser.Class({
+
+    Extends: Phaser.Tilemaps.Tile,
+
+    initialize: function (layer, index, x, y) 
+    {
+        layer = gameScene.map.getLayer(layer);
+        Phaser.Tilemaps.Tile.call(this, layer, index, x, y, gameScene.tileSize, gameScene.tileSize);
+    },
+
+    addToLayer: function (layer) 
+    {
+        var l = (layer !== undefined) ? layer : this.layer.name;
+        gameScene.map.getLayer(l).data[this.x][this.y] = this;
     }
 
-    this.findPathToPowerSource = function(checkedTiles) {
+});
+
+var Wire = new Phaser.Class({
+
+    Extends: PuzzleTile,
+
+    initialize: function (x, y) 
+    {
+        PuzzleTile.call(this, 'wires', 0, x, y);
+
+        this.powered = false;
+        this.north = false;
+        this.south = false;
+        this.east = false;
+        this.west = false;
+
+        this.connectableTiles = [gameScene.roomTiles.input, gameScene.roomTiles.output];
+        this.tileDirectionIndicies = {
+            '': 0,
+            'N': 1,   'S': 1,    'NS': 1,
+            'E': 2,   'W': 2,    'EW': 2,
+            'SE': 3,  'SEW': 4,  'SW': 5,
+            'NSE': 6, 'NSEW': 7, 'NSW': 8,
+            'NE': 9,  'NEW': 10, 'NW': 11
+        }
+
+        gameScene.updateWires();
+    },
+
+    findPathToPowerSource:  function (checkedTiles) 
+    {
         if(checkedTiles.indexOf(this) !== -1) return false;
         if (this.hasNeighboringPowerSource()) return true;
         else {
             checkedTiles.push(this);
             var neighbors = this.getWireNeighbors();
-            for (var i=0; i<neighbors.length; i++) {
+            for (var i=0; i<neighbors.length; i++) 
+{
                 if (neighbors[i].findPathToPowerSource(checkedTiles)) return true;
             }
         }
         return false;
-    }
+    },
 
-    this.isConnectableWith = function(x, y) {
+    isConnectableWith: function (x, y) 
+    {
         let tile = this.tilemap.getTileAt(x, y, true, 'wires');
         if (tile.index !== -1) return true;
 
         tile = this.tilemap.getTileAt(x, y, true, 'room');
-        if (connectableTiles.indexOf(tile.index) != -1) return true;
+        if (this.connectableTiles.indexOf(tile.index) != -1) return true;
         return false;
-    }
+    },
 
-    this.getDirectionIndex = function() {
+    getDirectionIndex: function () 
+    {
         let dir = '';
         if (this.north) dir += 'N';
         if (this.south) dir += 'S';
         if (this.east) dir += 'E';
         if (this.west) dir += 'W';
-        return tileDirectionIndicies[dir];
-    }
+        return this.tileDirectionIndicies[dir];
+    },
 
-    this.getWireNeighbors = function() {
+    getWireNeighbors: function () 
+{
         var neighbors = [];
 
         var tile = this.tilemap.getTileAt(this.x, this.y-1, null, 'wires');
@@ -329,9 +433,10 @@ function Wire() {
         if (this.west && tile !== null) neighbors.push(tile);
 
         return neighbors;
-    }
+    },
 
-    this.getRoomNeighbors = function() {
+    getRoomNeighbors: function () 
+{
         var neighbors = [];
 
         var tile = this.tilemap.getTileAt(this.x, this.y-1, null, 'room');
@@ -347,48 +452,49 @@ function Wire() {
         if (this.west && tile !== null) neighbors.push(tile);
 
         return neighbors;
-    }
+    },
 
-    this.hasNeighboringPowerSource = function() {
+    hasNeighboringPowerSource: function () 
+{
         var neighbors = this.getRoomNeighbors();
-        for(var i=0; i<neighbors.length; i++) {
+        for(var i=0; i<neighbors.length; i++) 
+{
             if (neighbors[i].index === gameScene.roomTiles.output) return true;
         }
         return false;
-    }
+    },
 
-    this.break = function() {
+    hasNeighboringPowerInput: function () 
+{
+        var neighbors = this.getRoomNeighbors();
+        for(var i=0; i<neighbors.length; i++) 
+{
+            if (neighbors[i].index === gameScene.roomTiles.input) return true;
+        }
+        return false;
+    },
+
+    break: function () 
+{
         this.tilemap.putTileAt(-1, this.x, this.y, null, 'wires');
         gameScene.updateWires();
-    }
+    },
 
-    this.updateColor = function() {
+    updateColor: function () 
+{
         //set color
         if (this.powered === true)
             this.tint = gameScene.colors.powered_blue;
         else
             this.tint = gameScene.colors.unpowered_blue;
-    }
+    },
 
-     this.updateConnections = function() {
+    updateConnections: function () 
+{
         this.north = this.isConnectableWith(this.x, this.y - 1);
         this.south = this.isConnectableWith(this.x, this.y + 1);
         this.east = this.isConnectableWith(this.x + 1, this.y);
         this.west = this.isConnectableWith(this.x - 1, this.y);
         this.index = this.getDirectionIndex();
     }
-
-    gameScene.updateWires();
-}
-
-gameScene.updateWires = function() {
-    var wires = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'wires');
-    for (var i=0; i < wires.length; i++) {
-        wires[i].updateConnections();
-    }
-    for (var i=0; i < wires.length; i++) {
-        var checkedTiles = []
-        wires[i].powered = wires[i].findPathToPowerSource(checkedTiles);
-        wires[i].updateColor();
-    }
-}
+})
