@@ -1,0 +1,98 @@
+GENERAL DESIGN
+
+Design Goals
+Simply because of the way I design, my design goals are parallel to an emotion or set of emotions in a specific order. As with most games, I want to keep interest; that's what the theming and most of the juice is for. The fulfillment of the game is similar to many puzzle games: the transformation from a confused state to a victorious state, overarched with a sense of learning. I want to especially emphasize the learning, without making the game feel unfair. This will entail more confusing levels overall, not since the levels are made specifically to be confusing, but to make the player realize as much as he can as rapidly as possible. However, as I know from other genres, especially horror, I can't stick to that for too long, or the player will get bored. That lets me have fun and make puzzles that don't teach them anything at all, whether it's just a joke level or it's a level that presents a challenge through immensity instead of unfamiliarity. One thing I want to emphasize especially is that, due to the nature of the project being a learning experience, not for profit, I would rather make an interesting game than a good one.
+
+Conveyance
+How I will teach the player is by singling a specific mechanic or a couple, and present them for the first time in an environment which makes the player think about it, ie in one that does not make the solution obvious. Of course, it would be a failure to make it esoteric.
+
+Theming
+This category is largely up to Brooke, but my suggestion is industrial to a point of caricature. Each area will elaborate on that in its own way, but I imagine doors that whir and slide open at humorously fast speeds, for a not gameplay-hindering amount of time, suggesting a humorously long door. Or cables that zap electricity when charged, or interactive tiles (I'll call these modules) which start at a slow animation speed and accelerate to a scarily fast speed. The music could be hard and industrial, but still funky and electronic, like rustblood in Hiveswap, except more funky, and maybe a bit faster-paced. I imagine it will feel nice when the churning of each module adding up by the end of the puzzle. 
+
+Juice
+See theming. How to do juice: think of something that doesn't have juice. Add juice. Once everything has juice, add more juice to things that already have some. Get yelled at about how the screen shakes so much that you can't play. Dial it oh-so-slightly down. If you need a better understanding of juice, watch talks by Vlambeer and play Vlambeer games.
+
+Fiction
+
+Prototyping
+I included this topic because I wanted a schematic for the top of a design document that I could copy-paste. No need for prototyping; we're just making this game for fun.
+
+SPECIFIC DESIGN
+
+Modules (and non-module tiles)
+
+Here is a list of modules (etc) I want, subject to vast rewriting, with the mechanics detailed
+Note that many of these are conceptual, mechanical, and focused on the design perspective, such as that the wall and door are the same tile
+ESSENTIALS
+  PLAYER	-Movement	-Placing and Gathering
+  FLOOR	-Permits Movement	-Blocks Movement when Activated					Graphically, a floor with a flag is a door open by default
+# WALL	-Blocks Movement	-Permits Movement when Activated				Graphically, a wall with a flag is a door closed by default
+@ ENTRANCE	-Orgin of Player
+* EXIT	-Proceeds to Next Level
+- WIRE	-Chargable	-Charges Chargables when Charged	-Cannot be Removed Unless Picked Up
+1 POOL	-Displays Quantity of Wire
+> CHARGER	-Charges Chargables	-If Flagged Only Charges when Activated
+> ACTIVATOR	-Actives a Flag when Charged	-If Flagged Only Activates when Activated	Sometimes, a Flag, Activator, and another Module are combined, so it may be Charged Directly
+0 FLAG	-Activates Tile when Activated	-Recieves Activity in General				The flags on exit door and its activator are implied	A flag may be a color or number or something
+FUNDAMENTALS
+= CAPACITOR	-Chargable	-Charges Chargables when Charged	-If Flagged only Charges when Activated
+X GROUND	-Disallows Chargables and any Connected Chargables From Being Charged	-If Flagged Allows Charge when Activated -Permits Movement
+> DIODE	-Only allows Current in one Direction	-Swaps Direction when Activated
+| LEDGE -Player may only move one direction across	-Wires do not Connect Across	-Player may Move Across Either way when Activated
+LOGIC												Some may be replaced with another visible, inaccesible room with wiring in it
+~ NOT	-Activates a Flag when Deactivated
+& AND	-Activates a Flag when all Input Flags are Activated
+| OR	-Activates a Flag when Activated
+^ XOR	-Activates a Flag when one Input Flag is Activated
+T FLIPFLOP	-Swaps Flag Activation when Activated
+LASERS
+} EMITTER	-Produces a Laser in Adjecent Open Tile	-If Flagged only Emits when Activated
+} RECIEVER	-Activates a Flag when Lit	-If Flagged only Activates when Activated
+- LASER	-Produces Laser of Same Direction in Adjecent Open Tile	-Lights Closed Tiles -Blocks Movement
+\ MIRROR	-Produces Laser or Beam in Different Direction when Lit	-If Flagged, only Produces when Activated
+TELEPORTATION
+% PORTAL	-Has Flag as Identifier	-Sends Player to Portal of Flag when Activated	-Recieves Player	-Only Recieves Player when Activated if Flagged and doesn't Send	-Carries Charge when Activated
+TRACTOR BEAMS
+] TRACTOR	-Produces tractor beam	-When Activated, Powers Beam
+| BEAM	-Produces Beam of Same Direction in Adjecent Open Tile -Can be Powered	-A Path is Created From one End of Powered Beam to the Other	-When Powered Beams Intersect, the Path Flows Along the Sides of Destination	-When Powered, Tiles at Ends of Path are Swapped
+WIRE POOLS
+W SWAPPER	-Cycles to the next Pool when Activated
++ DISPENSER	-Adds Set Amount of Wire to Pool when Activated	-Usable only Once
+% REMOVER	-Permits Movement	-Removes Wire to Current Pool when Activated
+CIRCUITS
+$ CIRCUIT	-Contains a Room	-Player may Enter by Moving into it	-Player May Exit by Walking out of Bounds	-A Main Activator Creates Charge Outside	-A Main Charger Charges when Charged from Outside
+
+Examples: Some shorthand involved
+
+######## 12
+#      #
+<      #
+#      #
+#000   #
+#  0   @
+#  0   #
+#*###^##
+
+##=## ##=## ##=##
+---     -     ---
+Charging Capacitor
+      Wire and Capacitor remain charged
+            Using capacitor to carry charge further
+######### #########
+#       # #       #
+#       # #       #
+[|||||||< >|||||||]
+#       # #       #
+#       # #       #
+######### #########
+Left is Tractor, right is charger
+          When Beam is Powered, tile positions swap
+####_#### ####_####
+#   .   # #   .   #
+#   .   # #   .   #
+[...-|||< [...-|||#
+#   -   # #   -   #
+#   -   # #   -   #
+######### ####^####
+Another Tractor on top. Path is Created Along - and | since beams intersect
+          When Beams are Powered, and only Simultaneously, Tiles are Swapped
