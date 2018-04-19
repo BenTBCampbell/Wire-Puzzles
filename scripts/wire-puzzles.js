@@ -6,7 +6,9 @@ let config =
     width: 1280,
     height: 720,
     scene: gameScene,
-    pixelArt: true
+    pixelArt: true,
+    // canvas: document.getElementById('game-canvas')
+    parent: 'canvas-container'
 };
 
 let game = new Phaser.Game(config);
@@ -53,14 +55,44 @@ gameScene.create = function ()
     this.numberStrings = {
         'ONE': 1, 'TWO': 2, 'THREE': 3, 'FOUR': 4, 'FIVE': 5, 'SIX': 6, 'SEVEN': 7, 'EIGHT': 8, 'NINE': 9, 'ZERO': 0
     }
-    let keyCodesToRemember = {};
+    this.keys = {}
     let key = '';
     for (var i = 0; i < keysToRemember.length; i++) 
     {
-        key = keysToRemember[i]
-        keyCodesToRemember[key] =  Phaser.Input.Keyboard.KeyCodes[key];
+        // keysToRemember[i]
+        // key = keysToRemember[i]
+        // keyCodesToRemember[key] =  Phaser.Input.Keyboard.KeyCodes[key];
+        this.keys[keysToRemember[i]] = 
+        {
+            isDown: false,
+            keyCode: Phaser.Input.Keyboard.KeyCodes[keysToRemember[i]]
+        }
     }
-    this.keys = this.input.keyboard.addKeys(keyCodesToRemember);
+
+    this.input.keyboard.on('keydown', function (e) 
+    {
+        for(var keyName in gameScene.keys)
+        {
+            if (gameScene.keys[keyName].keyCode === e.keyCode) 
+            {
+                gameScene.keys[keyName].isDown = true;
+                if (keyName === 'DOWN')
+                break;
+            }
+        }
+    });
+    this.input.keyboard.on('keyup', function (e) 
+    {
+        for(var keyName in gameScene.keys)
+        {
+            if (gameScene.keys[keyName].keyCode === e.keyCode) 
+            {
+                gameScene.keys[keyName].isDown = false;
+                break;
+            }
+        }
+    });
+    // this.keys = this.input.keyboard.addKeys(keyCodesToRemember);
 
     //colors
     this.colors = 
@@ -98,24 +130,23 @@ gameScene.create = function ()
     });
 
     var roomTileset = this.map.addTilesetImage('room tiles');
-    this.roomTiles = 
-    {
-        floor: 0,
-        wall: 1,
-        output: 2,
-        input: 3,
-        hardTWall: 4, //toggleable wall
-        softTWall: 5
-    }
-    this.drawTile = this.roomTiles.wall;
+    this.drawTile = TILES.wall;
     var poweredWireTiles = this.map.addTilesetImage('powered wire tiles');
     var unpoweredWireTiles = this.map.addTilesetImage('unpowered wire tiles');
     var whiteWireTiles = this.map.addTilesetImage('white wire tiles');
 
     var ground = this.map.createBlankDynamicLayer('room', roomTileset);
     var wires = this.map.createBlankDynamicLayer('wires', whiteWireTiles);
-    ground.fill(1);
-    ground.fill(0, 1, 1, this.map.width-2, this.map.height-2);
+    for (var x = 0; x < this.map.width; x ++)
+    {
+        for (var y = 0; y < this.map.height; y ++)
+        {
+            var tile = ( x === 0 || y === 0 || x === this.map.width - 1 || y === this.map.height - 1 ) ? new Wall(x, y) : new Floor(x, y);
+            tile.addToLayer();
+        }
+    }
+    // ground.fill(1);
+    // ground.fill(0, 1, 1, this.map.width-2, this.map.height-2);
 
     this.mapScaleGroup = this.add.group();
     this.mapScaleGroup.add(ground);
@@ -226,7 +257,9 @@ gameScene.update = function (time, delta)
 gameScene.placeRoomTileAt = function (x, y) 
 {
     if (this.timeSinceTilePlaced <= this.tilePlaceCooldown) return;
-    this.map.putTileAt(this.drawTile, x, y, false, 'room');
+    var tile = makeTileFromIndex(this.drawTile, x, y);
+    tile.addToLayer();
+    // this.map.putTileAt(this.drawTile, x, y, false, 'room');
     this.timeSinceTilePlaced = 0;
     this.updateWires();
 };
@@ -270,8 +303,79 @@ gameScene.updatePoweredTiles = function ()
     var tiles = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'room');
     for (var i=0; i<tiles.length; i++) 
     {
-        if (tiles[i].index === this.roomTiles.hardTWall) tiles[i].index = this.roomTiles.softTWall;
-        else if (tiles[i].index === this.roomTiles.softTWall) tiles[i].index = this.roomTiles.hardTWall;
+        if (tiles[i].index === TILES.hardTWall) tiles[i].index = TILES.softTWall;
+        else if (tiles[i].index === TILES.softTWall) tiles[i].index = TILES.hardTWall;
+    }
+}
+
+gameScene.exportLevel = function ()
+{
+    var name = document.getElementById('level-name').value;
+    name = (name !== '') ? name : 'level';
+    var level = {
+        name: name,
+        width: gameScene.map.width,
+        height: gameScene.map.height,
+        wires: [],
+        room: []
+    };
+
+    for (var y = 0; y < level.height; y ++)
+    {
+        level.wires.push([]);
+        level.room.push([]);
+        for (var x = 0; x < level.width; x ++)
+        {
+            var tile = this.map.getTileAt(x, y, null, 'wires');
+            level.wires[y][x] = (tile === null) ? -1 : tile.getData();
+
+            var tile = this.map.getTileAt(x, y, null, 'room');
+            level.room[y][x] = (tile === null) ? -1 : tile.getData();
+        }
+    }
+
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(level));
+    var downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", name + ".lvl");
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+gameScene.importLevel = function()
+{
+    var fileInput = document.createElement('input');
+    fileInput.setAttribute('type', 'file');
+    fileInput.onchange = function () 
+    {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var level = JSON.parse(e.target.result);
+            console.log(level);
+            gameScene.loadLevel(level);
+        }
+        reader.readAsText(fileInput.files[0]);
+        fileInput.remove();
+    };
+    fileInput.click();
+}
+
+gameScene.loadLevel = function(level) 
+{
+    for (var y = 0; y < level.height; y ++)
+    {
+        for (var x = 0; x < level.width; x ++)
+        {
+            var tile;
+            if (level.wires[y][x] !== -1) {
+                tile = new Wire(x, y);
+                tile.addToLayer();
+            }
+            if (level.room[y][x] !== -1) {
+                tile = makeTileFromIndex(level.room[y][x], x, y);
+                tile.addToLayer();
+            }
+        }
     }
 }
 
@@ -325,9 +429,7 @@ var Player = new Phaser.Class({
         let tileX = this.scene.map.worldToTileX(this.x)+dx;
         let tileY = this.scene.map.worldToTileY(this.y)+dy;
         let tile =this.scene.map.getTileAt(tileX, tileY, true, 'room');
-        if (tile === null ||
-            !(tile.index === this.scene.roomTiles.floor || 
-                tile.index === this.scene.roomTiles.softTWall)) return; //will hit wall;
+        if (tile === null || tile.isSolid) return;
 
         this.directionMoving = dir;
         this.x += this.speed*dx;
@@ -335,166 +437,3 @@ var Player = new Phaser.Class({
     }
     
 });
-
-var PuzzleTile = new Phaser.Class({
-
-    Extends: Phaser.Tilemaps.Tile,
-
-    initialize: function (layer, index, x, y) 
-    {
-        layer = gameScene.map.getLayer(layer);
-        Phaser.Tilemaps.Tile.call(this, layer, index, x, y, gameScene.tileSize, gameScene.tileSize);
-    },
-
-    addToLayer: function (layer) 
-    {
-        var l = (layer !== undefined) ? layer : this.layer.name;
-        gameScene.map.getLayer(l).data[this.x][this.y] = this;
-    }
-
-});
-
-var Wire = new Phaser.Class({
-
-    Extends: PuzzleTile,
-
-    initialize: function (x, y) 
-    {
-        PuzzleTile.call(this, 'wires', 0, x, y);
-
-        this.powered = false;
-        this.north = false;
-        this.south = false;
-        this.east = false;
-        this.west = false;
-
-        this.connectableTiles = [gameScene.roomTiles.input, gameScene.roomTiles.output];
-        this.tileDirectionIndicies = {
-            '': 0,
-            'N': 1,   'S': 1,    'NS': 1,
-            'E': 2,   'W': 2,    'EW': 2,
-            'SE': 3,  'SEW': 4,  'SW': 5,
-            'NSE': 6, 'NSEW': 7, 'NSW': 8,
-            'NE': 9,  'NEW': 10, 'NW': 11
-        }
-
-        gameScene.updateWires();
-    },
-
-    findPathToPowerSource:  function (checkedTiles) 
-    {
-        if(checkedTiles.indexOf(this) !== -1) return false;
-        if (this.hasNeighboringPowerSource()) return true;
-        else {
-            checkedTiles.push(this);
-            var neighbors = this.getWireNeighbors();
-            for (var i=0; i<neighbors.length; i++) 
-{
-                if (neighbors[i].findPathToPowerSource(checkedTiles)) return true;
-            }
-        }
-        return false;
-    },
-
-    isConnectableWith: function (x, y) 
-    {
-        let tile = this.tilemap.getTileAt(x, y, true, 'wires');
-        if (tile.index !== -1) return true;
-
-        tile = this.tilemap.getTileAt(x, y, true, 'room');
-        if (this.connectableTiles.indexOf(tile.index) != -1) return true;
-        return false;
-    },
-
-    getDirectionIndex: function () 
-    {
-        let dir = '';
-        if (this.north) dir += 'N';
-        if (this.south) dir += 'S';
-        if (this.east) dir += 'E';
-        if (this.west) dir += 'W';
-        return this.tileDirectionIndicies[dir];
-    },
-
-    getWireNeighbors: function () 
-{
-        var neighbors = [];
-
-        var tile = this.tilemap.getTileAt(this.x, this.y-1, null, 'wires');
-        if (this.north && tile !== null) neighbors.push(tile);
-
-        tile = this.tilemap.getTileAt(this.x, this.y+1, null, 'wires');
-        if (this.south && tile !== null) neighbors.push(tile);
-
-        tile = this.tilemap.getTileAt(this.x+1, this.y, null, 'wires');
-        if (this.east && tile !== null) neighbors.push(tile);
-
-        tile = this.tilemap.getTileAt(this.x-1, this.y, null, 'wires');
-        if (this.west && tile !== null) neighbors.push(tile);
-
-        return neighbors;
-    },
-
-    getRoomNeighbors: function () 
-{
-        var neighbors = [];
-
-        var tile = this.tilemap.getTileAt(this.x, this.y-1, null, 'room');
-        if (this.north && tile !== null) neighbors.push(tile);
-
-        tile = this.tilemap.getTileAt(this.x, this.y+1, null, 'room');
-        if (this.south && tile !== null) neighbors.push(tile);
-
-        tile = this.tilemap.getTileAt(this.x+1, this.y, null, 'room');
-        if (this.east && tile !== null) neighbors.push(tile);
-
-        tile = this.tilemap.getTileAt(this.x-1, this.y, null, 'room');
-        if (this.west && tile !== null) neighbors.push(tile);
-
-        return neighbors;
-    },
-
-    hasNeighboringPowerSource: function () 
-{
-        var neighbors = this.getRoomNeighbors();
-        for(var i=0; i<neighbors.length; i++) 
-{
-            if (neighbors[i].index === gameScene.roomTiles.output) return true;
-        }
-        return false;
-    },
-
-    hasNeighboringPowerInput: function () 
-{
-        var neighbors = this.getRoomNeighbors();
-        for(var i=0; i<neighbors.length; i++) 
-{
-            if (neighbors[i].index === gameScene.roomTiles.input) return true;
-        }
-        return false;
-    },
-
-    break: function () 
-{
-        this.tilemap.putTileAt(-1, this.x, this.y, null, 'wires');
-        gameScene.updateWires();
-    },
-
-    updateColor: function () 
-{
-        //set color
-        if (this.powered === true)
-            this.tint = gameScene.colors.powered_blue;
-        else
-            this.tint = gameScene.colors.unpowered_blue;
-    },
-
-    updateConnections: function () 
-{
-        this.north = this.isConnectableWith(this.x, this.y - 1);
-        this.south = this.isConnectableWith(this.x, this.y + 1);
-        this.east = this.isConnectableWith(this.x + 1, this.y);
-        this.west = this.isConnectableWith(this.x - 1, this.y);
-        this.index = this.getDirectionIndex();
-    }
-})

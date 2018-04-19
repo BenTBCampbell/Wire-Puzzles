@@ -4,10 +4,38 @@
   <head>
     <title>Wire Puzzles</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.3.0/dist/phaser.min.js"></script>
+    
+    <script src="scripts/tiles.js"></script>
     <script src="scripts/wire-puzzles.js"></script>
+
+    <style>
+      body {
+        margin: 0px;
+        overflow: hidden;
+      }
+
+      #game {
+        float: left;
+      }
+
+      #save-load {
+        position: absolute;
+        top: 0px;
+      }
+    </style>
   </head>
 
   <body>
+    <div id='game'>
+      <div id='canvas-container'></div>
+
+      <!-- gui -->
+      <div id='save-load'>
+          <input type="text" placeholder="name", id='level-name'/>
+          <button id='save-level' onclick="gameScene.exportLevel()">Save</button>
+          <button id='load-level' onclick="gameScene.importLevel()">Load</button>
+        </div>
+    </div>
   </body>
 
 </html>
