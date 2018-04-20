@@ -109,8 +109,6 @@ var Wire = new Phaser.Class({
             'NSE': 6, 'NSEW': 7, 'NSW': 8,
             'NE': 9,  'NEW': 10, 'NW': 11
         }
-
-        gameScene.updateWires();
     },
 
     findPathToPowerSource:  function (checkedTiles) 

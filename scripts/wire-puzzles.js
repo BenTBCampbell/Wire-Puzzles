@@ -59,9 +59,6 @@ gameScene.create = function ()
     let key = '';
     for (var i = 0; i < keysToRemember.length; i++) 
     {
-        // keysToRemember[i]
-        // key = keysToRemember[i]
-        // keyCodesToRemember[key] =  Phaser.Input.Keyboard.KeyCodes[key];
         this.keys[keysToRemember[i]] = 
         {
             isDown: false,
@@ -69,8 +66,9 @@ gameScene.create = function ()
         }
     }
 
-    this.input.keyboard.on('keydown', function (e) 
+    this.input.keyboard.on( 'keydown', function (e) 
     {
+        if (!(document.activeElement === document.body)) return;
         for(var keyName in gameScene.keys)
         {
             if (gameScene.keys[keyName].keyCode === e.keyCode) 
@@ -81,8 +79,9 @@ gameScene.create = function ()
             }
         }
     });
-    this.input.keyboard.on('keyup', function (e) 
+    this.input.keyboard.on( 'keyup', function (e) 
     {
+        if (!(document.activeElement === document.body)) return;
         for(var keyName in gameScene.keys)
         {
             if (gameScene.keys[keyName].keyCode === e.keyCode) 
@@ -91,6 +90,11 @@ gameScene.create = function ()
                 break;
             }
         }
+    });
+
+    this.input.on( 'pointerdown', function (e)
+    {
+        document.activeElement.blur();
     });
     // this.keys = this.input.keyboard.addKeys(keyCodesToRemember);
 
@@ -276,6 +280,7 @@ gameScene.toggleWireAt = function (x, y)
         var wire = new Wire(x, y);
         wire.addToLayer();
     }
+    this.updateWires();
 };
 
 gameScene.updateWires = function () 
@@ -351,7 +356,6 @@ gameScene.importLevel = function()
         var reader = new FileReader();
         reader.onload = function(e) {
             var level = JSON.parse(e.target.result);
-            console.log(level);
             gameScene.loadLevel(level);
         }
         reader.readAsText(fileInput.files[0]);
@@ -362,6 +366,7 @@ gameScene.importLevel = function()
 
 gameScene.loadLevel = function(level) 
 {
+    this.player.setPosition(this.map.tileToWorldX(2.5), this.map.tileToWorldY(2.5));
     for (var y = 0; y < level.height; y ++)
     {
         for (var x = 0; x < level.width; x ++)
@@ -370,10 +375,14 @@ gameScene.loadLevel = function(level)
             if (level.wires[y][x] !== -1) {
                 tile = new Wire(x, y);
                 tile.addToLayer();
+            } else {
+                this.map.putTileAt(-1, x, y, null, 'wires');
             }
             if (level.room[y][x] !== -1) {
                 tile = makeTileFromIndex(level.room[y][x], x, y);
                 tile.addToLayer();
+            } else {
+                this.map.putTileAt(-1, x, y, null, 'room');
             }
         }
     }
