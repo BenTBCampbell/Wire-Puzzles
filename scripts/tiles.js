@@ -1,42 +1,22 @@
-var TILES = 
-{
-    floor: 0,
-    wall: 1,
-    output: 2,
-    input: 3,
-    hardTWall: 4, //toggleable wall
-    softTWall: 5
-}
-
-function makeTileFromIndex (index, x, y, data) 
-{
-    switch (index) {
-        default:
-            return new PuzzleTile(index, x, y, undefined, data);
-            break;
-
-        case TILES.floor:
-            return new Floor(x, y, data);
-            break;
-
-        case TILES.wall:
-            return new Wall(x, y, data);
-            break;
-    }
-}
-
 var PuzzleTile = new Phaser.Class({
 
     Extends: Phaser.Tilemaps.Tile,
 
-    initialize: function (index, x, y, layer, data) 
+    initialize: function (index, x, y, data, layer) 
     {
         layer = (layer !== undefined) ? layer : 'room';
-        layer = gameScene.map.getLayer(layer);
-        Phaser.Tilemaps.Tile.call(this, layer, index, x, y, gameScene.tileSize, gameScene.tileSize);
+        if ( !( layer instanceof Phaser.Tilemaps.LayerData ) )
+            layer = gameScene.level.map.getLayer( layer );
+        Phaser.Tilemaps.Tile.call( this, layer, index, x, y, gameScene.tileSize, gameScene.tileSize );
 
-        data = (data !== undefined) ? data : {};
-        this.isSolid = (data.isSolid !== undefined) ? data.isSolid : true;
+
+        this.defaultData = {
+            isSolid: true,
+            isActive: false,
+            flags: []
+        };
+
+        this.setData(data);
     },
 
     getData: function ()
@@ -56,23 +36,61 @@ var PuzzleTile = new Phaser.Class({
         return this.index
     },
 
-    addToLayer: function () 
+    setData: function (data)
     {
-        if (this.x >= gameScene.map.width || this.y >= gameScene.map.height) return;
-        // console.log(this.x, this.y);
-        gameScene.map.getLayer(this.layer.name).data[this.y][this.x] = this;
+        data = (data === undefined || data === null) ? {} : data;
+        for (var attr in this.defaultData)
+        {
+            this[attr] = (data[attr] === undefined || data[attr] === null) ? this.defaultData[attr] : data[attr];
+        }
     }
 });
+
+var TILES = 
+{
+    floor: 0,
+    wall: 1,
+    charger: 2,
+    activator: 3,
+    hardTWall: 4, //toggleable wall
+    softTWall: 5
+}
+
+PuzzleTile.makeFromIndex = function (index, x, y, data, layer) 
+{
+    switch (index) {
+        default:
+            return new PuzzleTile(index, x, y, data, layer);
+            break;
+
+        case TILES.floor:
+            return new Floor(x, y, data, layer);
+            break;
+
+        case TILES.wall:
+            return new Wall(x, y, data, layer);
+            break;
+
+        case TILES.charger:
+            return new Charger(x, y, data, layer);
+            break;
+
+        case TILES.activator:
+            return new Activator(x, y, data, layer);
+            break;
+    }
+}
 
 var Floor = new Phaser.Class({
 
     Extends: PuzzleTile,
 
-    initialize: function (x, y, data)
+    initialize: function (x, y, data, layer)
     {
-        PuzzleTile.call(this, TILES.floor, x, y, 'room', data);
+        PuzzleTile.call(this, TILES.floor, x, y, data, layer);
 
-        this.isSolid = false;
+        this.defaultData.isSolid = false;
+        this.setData(data);
     }
 });
 
@@ -80,9 +98,62 @@ var Wall = new Phaser.Class({
 
     Extends: PuzzleTile,
 
-    initialize: function (x, y, data)
+    initialize: function (x, y, data, layer)
     {
-        PuzzleTile.call(this, TILES.wall, x, y, 'room', data);
+        PuzzleTile.call(this, TILES.wall, x, y, data, layer);
+    }
+});
+
+var Charger = new Phaser.Class({
+
+    Extends: PuzzleTile,
+
+    initialize: function (x, y, data, layer)
+    {
+        PuzzleTile.call(this, TILES.charger, x, y, data, layer);
+
+        this.defaultData.isSolid = false;
+        this.setData(data);
+    }
+});
+
+var Activator = new Phaser.Class({
+
+    Extends: PuzzleTile,
+
+    initialize: function (x, y, data, layer)
+    {
+        PuzzleTile.call(this, TILES.activator, x, y, data, layer);
+
+        this.defaultData.flags = ['0'];
+        this.setData(data);
+    },
+
+    update: function ()
+    {
+        var n = gameScene.map.getTileAt(this.x, this.y-1, null, 'wires');
+        var s = gameScene.map.getTileAt(this.x, this.y+1, null, 'wires');
+        var e = gameScene.map.getTileAt(this.x+1, this.y, null, 'wires');
+        var w = gameScene.map.getTileAt(this.x-1, this.y, null, 'wires');
+
+        if (
+            (n.isConnectableWith(this.x, this.y) && n.powered) ||
+            (s.isConnectableWith(this.x, this.y) && s.powered) ||
+            (e.isConnectableWith(this.x, this.y) && e.powered) ||
+            (w.isConnectableWith(this.x, this.y) && w.powered)
+        ) {
+            this.isActive = true;
+        }
+        else {
+            this.isActive = false;
+        }
+
+        var tiles = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'room');
+
+        for (var i = 0; i < tiles.length; i ++) {
+            if (tiles[i].flags.indexOf(this.flags[0]) !== -1) tiles[i].isActive = this.isActive;
+        }
+
     }
 });
 
@@ -90,9 +161,10 @@ var Wire = new Phaser.Class({
 
     Extends: PuzzleTile,
 
-    initialize: function (x, y, data) 
+    initialize: function (x, y, data, layer) 
     {
-        PuzzleTile.call(this, 0, x, y, 'wires', data);
+        layer = (layer !== undefined) ? layer : 'wires';        
+        PuzzleTile.call(this, 0, x, y, data, layer);
 
         this.powered = false;
         this.north = false;
@@ -207,7 +279,7 @@ var Wire = new Phaser.Class({
     break: function () 
     {
         this.tilemap.putTileAt(-1, this.x, this.y, null, 'wires');
-        gameScene.updateWires();
+        gameScene.level.updateWires();
     },
 
     updateColor: function () 

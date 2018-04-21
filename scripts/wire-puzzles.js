@@ -92,6 +92,7 @@ gameScene.create = function ()
         }
     });
 
+    //mouse
     this.input.on( 'pointerdown', function (e)
     {
         document.activeElement.blur();
@@ -123,43 +124,18 @@ gameScene.create = function ()
         zoomIn: this.keys.E
     };
 
-    // this.camControls = new Phaser.Cameras.Controls.Fixed(controlConfig);
+    //player
+    this.player = new Player( 100, 100 );
+    this.add.existing(this.player);
+    this.player.setDepth(1);
 
-    //tilemap
-    this.map = this.make.tilemap({
-        tileWidth: this.tileSize,
-        tileHeight: this.tileSize,
-        width: this.mapWidth,
-        height: this.mapHeight 
-    });
-
-    var roomTileset = this.map.addTilesetImage('room tiles');
+    //level
+    this.level = new Level( this.mapWidth, this.mapHeight );
     this.drawTile = TILES.wall;
-    var poweredWireTiles = this.map.addTilesetImage('powered wire tiles');
-    var unpoweredWireTiles = this.map.addTilesetImage('unpowered wire tiles');
-    var whiteWireTiles = this.map.addTilesetImage('white wire tiles');
-
-    var ground = this.map.createBlankDynamicLayer('room', roomTileset);
-    var wires = this.map.createBlankDynamicLayer('wires', whiteWireTiles);
-    for (var x = 0; x < this.map.width; x ++)
-    {
-        for (var y = 0; y < this.map.height; y ++)
-        {
-            var tile = ( x === 0 || y === 0 || x === this.map.width - 1 || y === this.map.height - 1 ) ? new Wall(x, y) : new Floor(x, y);
-            tile.addToLayer();
-        }
-    }
-    // ground.fill(1);
-    // ground.fill(0, 1, 1, this.map.width-2, this.map.height-2);
-
-    this.mapScaleGroup = this.add.group();
-    this.mapScaleGroup.add(ground);
-    this.mapScaleGroup.add(wires);
-    Phaser.Actions.ScaleXY(this.mapScaleGroup.getChildren(), this.tileScale, this.tileScale);
 
     //pick tile gui
     let scaledTileSize = this.tileSize*(this.tileScale+1);
-    let mapEdge = this.map.tileToWorldX(this.map.width) + 50;
+    let mapEdge = this.level.map.tileToWorldX(this.level.map.width) + 50;
     var tileSelectGroup = this.add.group([
         {
             key: 'room spritesheet',
@@ -192,19 +168,11 @@ gameScene.create = function ()
     let selectedTileCoords = tileSelectGroup.getChildren()[this.drawTile].getTopLeft();
     this.selectedTileMarker = this.add.graphics();
     this.selectedTileMarker.lineStyle(5, 0x000000, 1);
-    this.selectedTileMarker.strokeRect(0, 0, this.map.tileWidth*(this.tileScale+1), this.map.tileHeight*(this.tileScale+1));
+    this.selectedTileMarker.strokeRect(0, 0, this.level.map.tileWidth*(this.tileScale+1), this.level.map.tileHeight*(this.tileScale+1));
     this.selectedTileMarker.setPosition(selectedTileCoords.x, selectedTileCoords.y);
 
     this.markerSprite = this.add.sprite(0, 0, 'room spritesheet', this.drawTile);
-    this.markerSprite.setOrigin(0, 0);
-    this.markerSprite.setScale(this.tileScale+1);
-    this.markerSprite.setAlpha(0.75);
-
-    //player
-    this.player = new Player(this.map.tileToWorldX(2.5), this.map.tileToWorldY(2.5));
-    this.add.existing(this.player);
-    // this.player = new Phaser.GameObjects.Sprite(gameScene, 0, 0, 'player');
-
+    this.markerSprite.setOrigin(0, 0).setScale(this.tileScale+1).setAlpha(0.75).setDepth(2);
 };
 
 
@@ -225,10 +193,10 @@ gameScene.update = function (time, delta)
 
     var mousePos = this.input.activePointer.positionToCamera(this.cameras.main);
     //get world coords of tile mouse is in.
-    var mouseTileX = Math.max(Math.min(this.map.worldToTileX(mousePos.x), this.map.width-1), 0);
-    var mouseTileY = Math.max(Math.min(this.map.worldToTileY(mousePos.y), this.map.height-1), 0);
-    this.markerSprite.x = this.map.tileToWorldX(mouseTileX);
-    this.markerSprite.y = this.map.tileToWorldY(mouseTileY);
+    var mouseTileX = Math.max(Math.min(this.level.map.worldToTileX(mousePos.x), this.level.map.width-1), 0);
+    var mouseTileY = Math.max(Math.min(this.level.map.worldToTileY(mousePos.y), this.level.map.height-1), 0);
+    this.markerSprite.x = this.level.map.tileToWorldX(mouseTileX);
+    this.markerSprite.y = this.level.map.tileToWorldY(mouseTileY);
 
     if(this.previousSelectedTilePos.x != mouseTileX || this.previousSelectedTilePos.y != mouseTileY) this.timeSinceTilePlaced = this.tilePlaceCooldown;
     this.previousSelectedTilePos.x = mouseTileX;
@@ -236,9 +204,9 @@ gameScene.update = function (time, delta)
 
     //place wire
     if (this.input.manager.activePointer.isDown && 
-        this.map.worldToTileX(mousePos.x) < this.map.width && 
-        this.map.worldToTileY(mousePos.y) < this.map.height) 
-            this.placeRoomTileAt(mouseTileX, mouseTileY);
+        this.level.map.worldToTileX(mousePos.x) < this.level.map.width && 
+        this.level.map.worldToTileY(mousePos.y) < this.level.map.height) 
+            this.drawTileAt(mouseTileX, mouseTileY);
 
     this.timeSinceTilePlaced += 1;
 
@@ -248,7 +216,7 @@ gameScene.update = function (time, delta)
     this.player.update();
     if (this.keys.SPACE.isDown && this.player.directionMoving === '' && this.timeSinceTilePlaced >= this.tilePlaceCooldown) 
     {
-        this.toggleWireAt(this.map.worldToTileX(this.player.x), this.map.worldToTileY(this.player.y));
+        this.toggleWireAt(this.level.map.worldToTileX(this.player.x), this.level.map.worldToTileY(this.player.y));
         this.timeSinceTilePlaced = 0;
     }
 
@@ -258,60 +226,25 @@ gameScene.update = function (time, delta)
     else if (this.keys.RIGHT.isDown || this.keys.D.isDown) this.player.move('W');
 };
 
-gameScene.placeRoomTileAt = function (x, y) 
+gameScene.drawTileAt = function (x, y) 
 {
     if (this.timeSinceTilePlaced <= this.tilePlaceCooldown) return;
-    var tile = makeTileFromIndex(this.drawTile, x, y);
-    tile.addToLayer();
-    // this.map.putTileAt(this.drawTile, x, y, false, 'room');
+    var tile = PuzzleTile.makeFromIndex(this.drawTile, x, y);
+    this.level.add( tile )
     this.timeSinceTilePlaced = 0;
-    this.updateWires();
+    this.level.updateWires();
 };
 
 gameScene.toggleWireAt = function (x, y) 
 {
-    this.map.setLayer('wires');
-    if (this.map.getTileAt(x, y) != null) 
-    {
-        this.map.getTileAt(x, y).break();
-    }
+    this.level.map.setLayer('wires');
+    if (this.level.map.getTileAt(x, y) != null) 
+        this.level.map.getTileAt(x, y).break();
     else 
-    {
-        var wire = new Wire(x, y);
-        wire.addToLayer();
-    }
-    this.updateWires();
+        this.level.add( new Wire(x, y) );
+
+    this.level.updateWires();
 };
-
-gameScene.updateWires = function () 
-{
-    var wires = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'wires');
-    for (var i=0; i < wires.length; i++) 
-    {
-        wires[i].updateConnections();
-    }
-    for (var i=0; i < wires.length; i++) 
-    {
-        var checkedTiles = []
-        wires[i].powered = wires[i].findPathToPowerSource(checkedTiles);
-        wires[i].updateColor();
-
-        if(wires[i].hasNeighboringPowerInput() && wires[i].powered) 
-        {
-            this.updatePoweredTiles();
-        }
-    }
-}
-
-gameScene.updatePoweredTiles = function () 
-{
-    var tiles = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'room');
-    for (var i=0; i<tiles.length; i++) 
-    {
-        if (tiles[i].index === TILES.hardTWall) tiles[i].index = TILES.softTWall;
-        else if (tiles[i].index === TILES.softTWall) tiles[i].index = TILES.hardTWall;
-    }
-}
 
 gameScene.exportLevel = function ()
 {
@@ -319,8 +252,8 @@ gameScene.exportLevel = function ()
     name = (name !== '') ? name : 'level';
     var level = {
         name: name,
-        width: gameScene.map.width,
-        height: gameScene.map.height,
+        width: gameScene.level.map.width,
+        height: gameScene.level.map.height,
         wires: [],
         room: []
     };
@@ -331,10 +264,10 @@ gameScene.exportLevel = function ()
         level.room.push([]);
         for (var x = 0; x < level.width; x ++)
         {
-            var tile = this.map.getTileAt(x, y, null, 'wires');
+            var tile = this.level.map.getTileAt(x, y, null, 'wires');
             level.wires[y][x] = (tile === null) ? -1 : tile.getData();
 
-            var tile = this.map.getTileAt(x, y, null, 'room');
+            var tile = this.level.map.getTileAt(x, y, null, 'room');
             level.room[y][x] = (tile === null) ? -1 : tile.getData();
         }
     }
@@ -356,36 +289,12 @@ gameScene.importLevel = function()
         var reader = new FileReader();
         reader.onload = function(e) {
             var level = JSON.parse(e.target.result);
-            gameScene.loadLevel(level);
+            gameScene.level = new Level(level.width, level.height, level.room, level.wires);
         }
         reader.readAsText(fileInput.files[0]);
         fileInput.remove();
     };
     fileInput.click();
-}
-
-gameScene.loadLevel = function(level) 
-{
-    this.player.setPosition(this.map.tileToWorldX(2.5), this.map.tileToWorldY(2.5));
-    for (var y = 0; y < level.height; y ++)
-    {
-        for (var x = 0; x < level.width; x ++)
-        {
-            var tile;
-            if (level.wires[y][x] !== -1) {
-                tile = new Wire(x, y);
-                tile.addToLayer();
-            } else {
-                this.map.putTileAt(-1, x, y, null, 'wires');
-            }
-            if (level.room[y][x] !== -1) {
-                tile = makeTileFromIndex(level.room[y][x], x, y);
-                tile.addToLayer();
-            } else {
-                this.map.putTileAt(-1, x, y, null, 'room');
-            }
-        }
-    }
 }
 
 var Player = new Phaser.Class({
@@ -403,8 +312,8 @@ var Player = new Phaser.Class({
     update: function () 
     {
         // console.log(this.directionMoving);
-        let tileX = this.scene.map.tileToWorldX(this.scene.map.worldToTileX(this.x)+0.5);
-        let tileY = this.scene.map.tileToWorldY(this.scene.map.worldToTileY(this.y)+0.5);
+        let tileX = gameScene.level.map.tileToWorldX(gameScene.level.map.worldToTileX(this.x)+0.5);
+        let tileY = gameScene.level.map.tileToWorldY(gameScene.level.map.worldToTileY(this.y)+0.5);
         if (this.x !== tileX) 
         {
             let dx = Math.min(this.speed, Math.abs(tileX - this.x));
@@ -435,9 +344,9 @@ var Player = new Phaser.Class({
         else if (dir === 'W') dx = 1;
         else return;//invalid dir
 
-        let tileX = this.scene.map.worldToTileX(this.x)+dx;
-        let tileY = this.scene.map.worldToTileY(this.y)+dy;
-        let tile =this.scene.map.getTileAt(tileX, tileY, true, 'room');
+        let tileX = gameScene.level.map.worldToTileX(this.x)+dx;
+        let tileY = gameScene.level.map.worldToTileY(this.y)+dy;
+        let tile = gameScene.level.map.getTileAt(tileX, tileY, true, 'room');
         if (tile === null || tile.isSolid) return;
 
         this.directionMoving = dir;
