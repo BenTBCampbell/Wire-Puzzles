@@ -11,8 +11,6 @@ var Level = new Phaser.Class({
         });
 
         var roomTileset = this.map.addTilesetImage('room tiles');
-        var poweredWireTiles = this.map.addTilesetImage('powered wire tiles');
-        var unpoweredWireTiles = this.map.addTilesetImage('unpowered wire tiles');
         var whiteWireTiles = this.map.addTilesetImage('white wire tiles');
 
 
@@ -100,20 +98,46 @@ var Level = new Phaser.Class({
             wires[i].powered = wires[i].findPathToPowerSource(checkedTiles);
             wires[i].updateColor();
 
-            if(wires[i].hasNeighboringPowerInput() && wires[i].powered) 
-            {
-                this.updatePoweredTiles();
-            }
+            // if(wires[i].isConnectedToActivator() && wires[i].powered) 
+            // {
+            //     this.updateFlaggedTiles();
+            // }
         }
+        this.updateFlaggedTiles();
     },
 
-    updatePoweredTiles: function () 
+    updateFlaggedTiles: function () 
     {
-        var tiles = gameScene.level.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'room');
-        for (var i=0; i<tiles.length; i++) 
+        var flags = {}
+
+        //find out what flags are active or not
+        var tiles = this.room.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true});
+        for ( var i = 0; i < tiles.length; i++ ) 
         {
-            if (tiles[i].index === TILES.hardTWall) tiles[i].index = TILES.softTWall;
-            else if (tiles[i].index === TILES.softTWall) tiles[i].index = TILES.hardTWall;
+            if ( tiles[i].index === TILES.activator ) 
+            {
+                tiles[i].checkIfActive();
+                for ( var j = 0; j < tiles[i].flags.length; j ++ )
+                {
+                    var tileFlag = parseFlag(tiles[i].flags[j]);
+                    if ( flags[tileFlag.name] === undefined) 
+                        flags[tileFlag.name] = (tileFlag.isInverted) ? !tiles[i].isActive : tiles[i].isActive;
+                    else if ( tiles[i].isActive && !tileFlag.isInverted)
+                        flags[tiles[i].flags[j]] = true;
+                    else if ( !tiles[i].isActive && tileFlag.isInverted)
+                        flags[tiles[i].flags[j]] = true;
+                }
+            }
+        }
+
+        //update flagged tiles
+        for ( var tileI = 0; tileI < tiles.length; tileI ++ ) 
+        {
+            for ( var flagI = 0; flagI < tiles[tileI].flags.length; flagI ++ )
+            {
+                var tileFlag = parseFlag(tiles[tileI].flags[flagI]);
+                tiles[tileI].setActive( tileFlag.isInverted ? !flags[tileFlag.name] : flags[tileFlag.name] );
+            }
         }
     }
 });

@@ -43,6 +43,11 @@ var PuzzleTile = new Phaser.Class({
         {
             this[attr] = (data[attr] === undefined || data[attr] === null) ? this.defaultData[attr] : data[attr];
         }
+    },
+
+    setActive: function (isActive)
+    {
+        this.isActive = isActive;
     }
 });
 
@@ -52,8 +57,8 @@ var TILES =
     wall: 1,
     charger: 2,
     activator: 3,
-    hardTWall: 4, //toggleable wall
-    softTWall: 5
+    flaggedWall: 4, //toggleable wall
+    flaggedFloor: 5
 }
 
 PuzzleTile.makeFromIndex = function (index, x, y, data, layer) 
@@ -68,7 +73,9 @@ PuzzleTile.makeFromIndex = function (index, x, y, data, layer)
             break;
 
         case TILES.wall:
-            return new Wall(x, y, data, layer);
+            var tile = new Floor(x, y, data, layer);
+            tile.setActive(true);
+            return tile;
             break;
 
         case TILES.charger:
@@ -91,16 +98,21 @@ var Floor = new Phaser.Class({
 
         this.defaultData.isSolid = false;
         this.setData(data);
-    }
-});
+    },
 
-var Wall = new Phaser.Class({
-
-    Extends: PuzzleTile,
-
-    initialize: function (x, y, data, layer)
+    setActive: function (isActive)
     {
-        PuzzleTile.call(this, TILES.wall, x, y, data, layer);
+        this.isActive = isActive;
+        if ( this.isActive )
+            {
+                this.isSolid = true;
+                this.index = (this.flags.length > 0) ? TILES.flaggedWall : TILES.wall;
+            }
+        else if (!this.isActive)
+        {
+            this.isSolid = false;
+            this.index = (this.flags.length > 0) ? TILES.flaggedFloor : TILES.floor;
+        }
     }
 });
 
@@ -112,7 +124,6 @@ var Charger = new Phaser.Class({
     {
         PuzzleTile.call(this, TILES.charger, x, y, data, layer);
 
-        this.defaultData.isSolid = false;
         this.setData(data);
     }
 });
@@ -129,31 +140,28 @@ var Activator = new Phaser.Class({
         this.setData(data);
     },
 
-    update: function ()
+    checkIfActive: function ()
     {
-        var n = gameScene.map.getTileAt(this.x, this.y-1, null, 'wires');
-        var s = gameScene.map.getTileAt(this.x, this.y+1, null, 'wires');
-        var e = gameScene.map.getTileAt(this.x+1, this.y, null, 'wires');
-        var w = gameScene.map.getTileAt(this.x-1, this.y, null, 'wires');
+        var neighbors = []
+        neighbors.push(gameScene.level.wires.getTileAt(this.x, this.y+1));
+        neighbors.push(gameScene.level.wires.getTileAt(this.x, this.y-1));
+        neighbors.push(gameScene.level.wires.getTileAt(this.x+1, this.y));
+        neighbors.push(gameScene.level.wires.getTileAt(this.x-1, this.y));
 
-        if (
-            (n.isConnectableWith(this.x, this.y) && n.powered) ||
-            (s.isConnectableWith(this.x, this.y) && s.powered) ||
-            (e.isConnectableWith(this.x, this.y) && e.powered) ||
-            (w.isConnectableWith(this.x, this.y) && w.powered)
-        ) {
-            this.isActive = true;
-        }
-        else {
-            this.isActive = false;
-        }
-
-        var tiles = gameScene.map.getTilesWithin(0, 0, undefined, undefined, {isNotEmpty: true}, 'room');
-
-        for (var i = 0; i < tiles.length; i ++) {
-            if (tiles[i].flags.indexOf(this.flags[0]) !== -1) tiles[i].isActive = this.isActive;
+        this.isActive = false;
+        for (var i = 0; i < neighbors.length; i ++)
+        {
+            if (
+                neighbors[i] !== null && 
+                neighbors[i].isConnectableWith(this.x, this.y) &&
+                neighbors[i].powered
+            ) {
+                this.isActive = true;
+                break;
+            }
         }
 
+        return this.isActive;
     }
 });
 
@@ -172,7 +180,7 @@ var Wire = new Phaser.Class({
         this.east = false;
         this.west = false;
 
-        this.connectableTiles = [TILES.input, TILES.output];
+        this.connectableTiles = [TILES.charger, TILES.activator];
         this.tileDirectionIndicies = {
             '': 0,
             'N': 1,   'S': 1,    'NS': 1,
@@ -186,7 +194,7 @@ var Wire = new Phaser.Class({
     findPathToPowerSource:  function (checkedTiles) 
     {
         if(checkedTiles.indexOf(this) !== -1) return false;
-        if (this.hasNeighboringPowerSource()) return true;
+        if (this.isConnectedToCharger()) return true;
         else {
             checkedTiles.push(this);
             var neighbors = this.getWireNeighbors();
@@ -256,23 +264,21 @@ var Wire = new Phaser.Class({
         return neighbors;
     },
 
-    hasNeighboringPowerSource: function () 
+    isConnectedToCharger: function () 
     {
         var neighbors = this.getRoomNeighbors();
         for(var i=0; i<neighbors.length; i++) 
-        {
-            if (neighbors[i].index === TILES.output) return true;
-        }
+            if (neighbors[i] instanceof Charger) return true;
+
         return false;
     },
 
-    hasNeighboringPowerInput: function () 
+    isConnectedToActivator: function () 
     {
         var neighbors = this.getRoomNeighbors();
         for(var i=0; i<neighbors.length; i++) 
-        {
-            if (neighbors[i].index === TILES.input) return true;
-        }
+            if (neighbors[i] instanceof Activator) return true;
+
         return false;
     },
 
