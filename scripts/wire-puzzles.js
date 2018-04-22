@@ -337,7 +337,27 @@ gameScene.toggleWireAt = function (x, y)
     this.level.updateWires();
 };
 
+// gameScene.exportLevel = function ()
+// {
+//     var name = document.getElementById('level-name').value;
+//     name = (name !== '') ? name : 'level';
+//     var downloadAnchorNode = document.createElement('a');
+//     downloadAnchorNode.setAttribute("href", this.getLevelJSON());
+//     downloadAnchorNode.setAttribute("download", name + ".lvl");
+//     downloadAnchorNode.click();
+//     downloadAnchorNode.remove();
+// }
+
 gameScene.exportLevel = function ()
+{
+    var name = document.getElementById('level-name').value;
+    name = (name !== '') ? name : 'level';
+    var downloadLink = document.getElementById('download-level')
+    downloadLink.setAttribute("href", this.getLevelJSON());
+    downloadLink.setAttribute("download", name + ".lvl");
+}
+
+gameScene.getLevelJSON = function()
 {
     var name = document.getElementById('level-name').value;
     name = (name !== '') ? name : 'level';
@@ -364,11 +384,7 @@ gameScene.exportLevel = function ()
     }
 
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(level));
-    var downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href",     dataStr);
-    downloadAnchorNode.setAttribute("download", name + ".lvl");
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    return dataStr;
 }
 
 gameScene.importLevel = function()
