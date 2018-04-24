@@ -2,6 +2,8 @@ var Level = new Phaser.Class({
 
     initialize: function(width, height, room, wires)
     {
+        width = (width === undefined || width === null) ? 5 : width;
+        height = (height === undefined || height === null) ? 5 : height;
         //set up tilemap
         this.map = gameScene.make.tilemap({
             tileWidth: gameScene.tileSize,
@@ -44,22 +46,33 @@ var Level = new Phaser.Class({
             }   
         }
 
-        //default wires
-        if (wires === undefined || wires === null) wires = [];
-
         //fill tilemap with tiles
         for (var y = 0; y < height; y ++)
         {
             for (var x = 0; x < width; x ++)
             {
-                var tile;
                 if (wires[y][x] !== -1) 
-                    this.add(new Wire(x, y, null, this.wires.layer));
+                {
+                    var data = (wires[y][x] instanceof Object) ? wires[y][x] : null;
+                    console.log(data);
+                    this.add(new Wire(x, y, data, this.wires.layer));
+                }
                 else
                     this.wires.putTileAt(-1, x, y);
 
                 if (room[y][x] !== -1)
-                    this.add(PuzzleTile.makeFromIndex(room[y][x], x, y, null, this.room.layer));
+                {
+                    var data = null;
+                    var index = room[y][x];
+                    if (room[y][x] instanceof Object)
+                    {
+                        //tile with custom data found
+                        data = room[y][x];
+                        index = data.index;
+                        console.log(index, data);
+                    }
+                    this.add(PuzzleTile.makeFromIndex(index, x, y, data, this.room.layer));
+                }
                 else
                     this.room.putTileAt(-1, x, y);
             }
@@ -73,7 +86,12 @@ var Level = new Phaser.Class({
         Phaser.Actions.ScaleXY(mapScaleGroup.getChildren(), gameScene.tileScale, gameScene.tileScale);
 
         //move player to start position
-        gameScene.player.setPosition(this.map.tileToWorldX(2.5), this.map.tileToWorldY(2.5));
+        var start = this.room.findByIndex(TILES.start);
+        if (start === null) start = {x: 2, y: 2};
+        gameScene.player.setPosition(this.map.tileToWorldX( start.x + 0.5 ), this.map.tileToWorldY( start.y + 0.5 ));
+        gameScene.player.directionMoving = '';
+
+        this.startData = this.getAsData();
     },
 
     add: function (tile) 
@@ -139,5 +157,52 @@ var Level = new Phaser.Class({
                 tiles[tileI].setActive( tileFlag.isInverted ? !flags[tileFlag.name] : flags[tileFlag.name] );
             }
         }
+    },
+
+    getAsData:  function ()
+    {
+        var name = document.getElementById('level-name').value;
+        name = (name !== '') ? name : 'level';
+        var level = {
+            name: name,
+            width: this.map.width,
+            height: this.map.height,
+            wires: [],
+            room: []
+        };
+
+        for (var y = 0; y < level.height; y ++)
+        {
+            level.wires.push([]);
+            level.room.push([]);
+            for (var x = 0; x < level.width; x ++)
+            {
+                var tile = this.wires.getTileAt(x, y);
+                if (tile === null)
+                    level.wires[y][x] = -1;
+                else 
+                {
+                    var data = tile.getData();
+                    if (Object.keys(data).length > 1)
+                        level.wires[y][x] = data;
+                    else
+                        level.wires[y][x] = data.index;
+                }
+
+                var tile = this.room.getTileAt(x, y);
+                if (tile === null)
+                    level.room[y][x] = -1;
+                else 
+                {
+                    var data = tile.getData();
+                    if (Object.keys(data).length > 1)
+                        level.room[y][x] = data;
+                    else
+                        level.room[y][x] = data.index;
+                }
+            }
+        }
+
+        return level;
     }
 });

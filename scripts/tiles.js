@@ -21,19 +21,12 @@ var PuzzleTile = new Phaser.Class({
 
     getData: function ()
     {
-        var tileName = "unknown";
-        for(var name in TILES) {
-            if (TILES[name] === this.index) 
-            {
-                tileName = name;
-                break;
-            }
-        }
-        // return {
-        //     index: this.index,
-        //     type: tileName
-        // }
-        return this.index
+        var data = {
+            index: this.index
+        };
+        if (this.flags.length > 0) data.flags = this.flags;
+
+        return data;
     },
 
     setData: function (data)
@@ -41,7 +34,12 @@ var PuzzleTile = new Phaser.Class({
         data = (data === undefined || data === null) ? {} : data;
         for (var attr in this.defaultData)
         {
-            this[attr] = (data[attr] === undefined || data[attr] === null) ? this.defaultData[attr] : data[attr];
+            if (data[attr] === undefined || data[attr] === null)
+            {
+                this[attr] = this.defaultData[attr];
+            } else {
+                this[attr] = data[attr];
+            }
         }
     },
 
@@ -58,7 +56,9 @@ var TILES =
     charger: 2,
     activator: 3,
     flaggedWall: 4, //toggleable wall
-    flaggedFloor: 5
+    flaggedFloor: 5,
+    start: 6,
+    end: 7
 }
 
 PuzzleTile.makeFromIndex = function (index, x, y, data, layer) 
@@ -78,12 +78,33 @@ PuzzleTile.makeFromIndex = function (index, x, y, data, layer)
             return tile;
             break;
 
+        case TILES.flaggedFloor:
+            var tile = new Floor(x, y, data, layer);
+            if (tile.flags.length === 0) tile.flags.push("0");
+            return tile;
+            break;
+
+        case TILES.flaggedWall:
+            var tile = new Floor(x, y, data, layer);
+            if (tile.flags.length === 0) tile.flags.push("~0");
+            tile.setActive(true);
+            return tile;
+            break;
+
         case TILES.charger:
             return new Charger(x, y, data, layer);
             break;
 
         case TILES.activator:
             return new Activator(x, y, data, layer);
+            break;
+
+        case TILES.start:
+            return new Start(x, y, data, layer);
+            break;
+
+        case TILES.end:
+            return new End(x, y, data, layer);
             break;
     }
 }
@@ -124,6 +145,40 @@ var Charger = new Phaser.Class({
     {
         PuzzleTile.call(this, TILES.charger, x, y, data, layer);
 
+        this.setData(data);
+    }
+});
+
+var Start = new Phaser.Class({
+
+    Extends: PuzzleTile,
+
+    initialize: function (x, y, data, layer)
+    {
+        PuzzleTile.call(this, TILES.start, x, y, data, layer);
+
+        this.defaultData.isSolid = false;
+        this.setData(data);
+
+        gameScene.player.setPosition( gameScene.level.map.tileToWorldX(x+0.5), gameScene.level.map.tileToWorldY(y+0.5) );
+
+        gameScene.level.room.forEachTile(function (tile) {
+            if (tile === this) return;
+            if (tile.index === TILES.start)
+                gameScene.level.add( new Floor(tile.x, tile.y) );
+        }, this);
+    }
+});
+
+var End = new Phaser.Class({
+
+    Extends: PuzzleTile,
+
+    initialize: function (x, y, data, layer)
+    {
+        PuzzleTile.call(this, TILES.end, x, y, data, layer);
+
+        this.defaultData.isSolid = false;
         this.setData(data);
     }
 });

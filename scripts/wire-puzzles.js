@@ -142,14 +142,13 @@ gameScene.create = function ()
     var tileSelectGroup = this.add.group([
         {
             key: 'room spritesheet',
-            frame: [0, 1, 2],
+            frame: [TILES.floor, TILES.wall, TILES.charger, TILES.activator],
             setXY: { x: mapEdge, y: 0, stepX: scaledTileSize },
             setScale: { x: this.tileScale+1, y: this.tileScale+1 }
         }, 
         {
             key: 'room spritesheet',
-            // frame: [3, 4, 5],
-            frame: [3],
+            frame: [TILES.start, TILES.end],
             setXY: { x: mapEdge, y: scaledTileSize, stepX: scaledTileSize },
             setScale: { x: this.tileScale+1, y: this.tileScale+1 }
         }, 
@@ -168,15 +167,15 @@ gameScene.create = function ()
         // }, 
         {
             key: 'logic',
-            frame: [0, 1, 2],
+            frame: [0, 1],
             setXY: { x: mapEdge, y: 4*scaledTileSize, stepX: scaledTileSize },
             setScale: { x: this.tileScale+1, y: this.tileScale+1 }
-        },
-        {
-            key: 'logic',
-            frame: [3, 4, 5],
-            setXY: { x: mapEdge, y: 5*scaledTileSize, stepX: scaledTileSize },
-            setScale: { x: this.tileScale+1, y: this.tileScale+1 }
+        // },
+        // {
+        //     key: 'logic',
+        //     frame: [3, 4, 5],
+        //     setXY: { x: mapEdge, y: 5*scaledTileSize, stepX: scaledTileSize },
+        //     setScale: { x: this.tileScale+1, y: this.tileScale+1 }
         }
     ]);
 
@@ -337,54 +336,15 @@ gameScene.toggleWireAt = function (x, y)
     this.level.updateWires();
 };
 
-// gameScene.exportLevel = function ()
-// {
-//     var name = document.getElementById('level-name').value;
-//     name = (name !== '') ? name : 'level';
-//     var downloadAnchorNode = document.createElement('a');
-//     downloadAnchorNode.setAttribute("href", this.getLevelJSON());
-//     downloadAnchorNode.setAttribute("download", name + ".lvl");
-//     downloadAnchorNode.click();
-//     downloadAnchorNode.remove();
-// }
-
 gameScene.exportLevel = function ()
 {
     var name = document.getElementById('level-name').value;
     name = (name !== '') ? name : 'level';
     var downloadLink = document.getElementById('download-level')
-    downloadLink.setAttribute("href", this.getLevelJSON());
-    downloadLink.setAttribute("download", name + ".lvl");
-}
-
-gameScene.getLevelJSON = function()
-{
-    var name = document.getElementById('level-name').value;
-    name = (name !== '') ? name : 'level';
-    var level = {
-        name: name,
-        width: gameScene.level.map.width,
-        height: gameScene.level.map.height,
-        wires: [],
-        room: []
-    };
-
-    for (var y = 0; y < level.height; y ++)
-    {
-        level.wires.push([]);
-        level.room.push([]);
-        for (var x = 0; x < level.width; x ++)
-        {
-            var tile = this.level.map.getTileAt(x, y, null, 'wires');
-            level.wires[y][x] = (tile === null) ? -1 : tile.getData();
-
-            var tile = this.level.map.getTileAt(x, y, null, 'room');
-            level.room[y][x] = (tile === null) ? -1 : tile.getData();
-        }
-    }
-
+    var level = this.level.getAsData();
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(level));
-    return dataStr;
+    downloadLink.setAttribute("href", dataStr);
+    downloadLink.setAttribute("download", name + ".lvl");
 }
 
 gameScene.importLevel = function()
@@ -402,6 +362,13 @@ gameScene.importLevel = function()
         fileInput.remove();
     };
     fileInput.click();
+}
+
+gameScene.end = function()
+{
+    alert ('level finished!');
+    var level = this.level.startData;
+    this.level = new Level(level.width, level.height, level.room, level.wires);
 }
 
 var parseFlag = function (flag)
@@ -434,8 +401,9 @@ var Player = new Phaser.Class({
 
     update: function () 
     {
-        let tileX = gameScene.level.map.tileToWorldX(gameScene.level.map.worldToTileX(this.x)+0.5);
-        let tileY = gameScene.level.map.tileToWorldY(gameScene.level.map.worldToTileY(this.y)+0.5);
+        var map = gameScene.level.map;
+        let tileX = map.tileToWorldX(map.worldToTileX(this.x)+0.5);
+        let tileY = map.tileToWorldY(map.worldToTileY(this.y)+0.5);
         if (this.x !== tileX) 
         {
             let dx = Math.min(this.speed, Math.abs(tileX - this.x));
@@ -451,6 +419,12 @@ var Player = new Phaser.Class({
         else if (this.x === tileX && this.y === tileY) 
         {
             this.directionMoving = '';
+        }
+
+        if (this.directionMoving === '')
+        {
+            var tileBeneath = gameScene.level.room.getTileAtWorldXY(this.x, this.y, true);
+            if (tileBeneath.index === TILES.end) gameScene.end();
         }
     },
 
