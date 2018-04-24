@@ -54,7 +54,6 @@ var Level = new Phaser.Class({
                 if (wires[y][x] !== -1) 
                 {
                     var data = (wires[y][x] instanceof Object) ? wires[y][x] : null;
-                    console.log(data);
                     this.add(new Wire(x, y, data, this.wires.layer));
                 }
                 else
@@ -69,7 +68,6 @@ var Level = new Phaser.Class({
                         //tile with custom data found
                         data = room[y][x];
                         index = data.index;
-                        console.log(index, data);
                     }
                     this.add(PuzzleTile.makeFromIndex(index, x, y, data, this.room.layer));
                 }
