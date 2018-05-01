@@ -76,6 +76,7 @@ var Level = new Phaser.Class({
             }
         }
         this.updateWires();
+        this.updateFlaggedTiles();
 
         //scale tiles
         var mapScaleGroup = gameScene.add.group();

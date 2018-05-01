@@ -5,6 +5,7 @@
     <title>Wire Puzzles</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.3.0/dist/phaser.min.js"></script>
     
+    <script src="scripts/levels-list.js"></script>
     <script src="scripts/tiles.js"></script>
     <script src="scripts/level.js"></script>
     <script src="scripts/wire-puzzles.js"></script>
@@ -23,6 +24,12 @@
         position: absolute;
         top: 0px;
       }
+
+      #level-select-div {
+        background-color:white;
+        display: inline;
+        padding: 4px;
+      }
     </style>
   </head>
 
@@ -33,11 +40,13 @@
       <!-- gui -->
     <div id='save-load'>
       <input type="text" placeholder="name", id='level-name'/>
-      <a id='download-level' class='button' href="" download='.lvl'>
-        <button id='save-level' onclick="gameScene.exportLevel()">Save</button>
-      </a>
-      <button id='load-level' onclick="gameScene.importLevel()">Load</button>
-      <button id='load-level' onclick="gameScene.level.startData=gameScene.level.getAsData()">Save State</button>
+      <a id='download-level' class='button' href="" download='.lvl'><button id='save-level' onclick="gameScene.exportLevel();">Save</button></a>
+      <button id='load-level' onclick="gameScene.importLevel();">Load</button>
+      <button id='save-state' onclick="gameScene.level.startData=gameScene.level.getAsData();">Save State</button>
+      <div id='level-select-div'>
+        Select Level:
+        <select id='level-select'></select>
+      </div>
     </div>
   </body>
 

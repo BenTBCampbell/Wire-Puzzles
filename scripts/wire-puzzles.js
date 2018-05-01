@@ -233,6 +233,27 @@ gameScene.create = function ()
 
     this.markerSprite = this.add.sprite(0, 0, 'room spritesheet', this.drawTile);
     this.markerSprite.setOrigin(0, 0).setScale(this.tileScale+1).setAlpha(0.75).setDepth(2);
+
+    //level select
+
+    for (var i = 0; i < LEVELS.length; i ++)
+    {
+        var level = LEVELS[i];
+
+        var levelSelectOption = document.createElement('option');
+        levelSelectOption.setAttribute('value', level);
+        levelSelectOption.innerText = level;
+
+        document.getElementById('level-select').appendChild(levelSelectOption);
+    }
+
+    document.getElementById('level-select').onchange = function (e) 
+    {
+        gameScene.loadLevel(this.value);
+        this.blur();
+    }
+
+    this.loadLevel(LEVELS[0]);
 };
 
 
@@ -362,6 +383,32 @@ gameScene.importLevel = function()
         fileInput.remove();
     };
     fileInput.click();
+}
+
+gameScene.loadLevel = function (name)
+{
+    var xmlhttp = new XMLHttpRequest();
+    var url = 'levels/' + name + '.lvl';
+
+    xmlhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            var level = JSON.parse(this.responseText);
+            gameScene.level = new Level(level.width, level.height, level.room, level.wires);
+            // myFunction(myArr);
+        }
+    };
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+
+    // function myFunction(arr) {
+    //     var out = "";
+    //     var i;
+    //     for(i = 0; i < arr.length; i++) {
+    //         out += '<a href="' + arr[i].url + '">' + 
+    //         arr[i].display + '</a><br>';
+    //     }
+    //     document.getElementById("id01").innerHTML = out;
+    // }
 }
 
 gameScene.end = function()
