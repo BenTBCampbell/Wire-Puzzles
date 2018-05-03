@@ -4,6 +4,6 @@ var LEVELS = [
     'fork',
     'inception',
     'parkour',
-    'mesaroom_BETA'
+    'mesaroom_BETA',
     'story'
 ]
