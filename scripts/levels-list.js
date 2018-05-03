@@ -1,5 +1,9 @@
 var LEVELS = [
     'Empty',
-    'Small',
-    'The Wall'
+    'lines',
+    'fork',
+    'inception',
+    'parkour',
+    'mesaroom_BETA'
+    'story'
 ]
