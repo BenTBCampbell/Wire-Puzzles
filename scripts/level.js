@@ -86,7 +86,7 @@ var Level = new Phaser.Class({
 
         //move player to start position
         var start = this.room.findByIndex(TILES.start);
-        if (start === null) start = {x: 2, y: 2};
+        if (start === null) start = {x: 0, y: 0};
         gameScene.player.setPosition(this.map.tileToWorldX( start.x + 0.5 ), this.map.tileToWorldY( start.y + 0.5 ));
         gameScene.player.directionMoving = '';
 
@@ -203,5 +203,58 @@ var Level = new Phaser.Class({
         }
 
         return level;
+    },
+
+    setSize: function(width, height)
+    {
+        var data = this.getAsData();
+        if (data.width > width)
+        {
+            //cut ends of level
+            for (var i = 0; i < data.height; i ++) 
+            {
+                data.room[i] = data.room[i].splice(0, width);
+                data.wires[i] = data.wires[i].splice(0, width);
+            }
+        } else if (data.width < width)
+        {
+            //add to ends of level
+            for (var i = 0; i < data.height; i ++)
+            {
+                for (var j = data.width; j < width; j ++) {
+                    data.room[i].push(TILES.wall);
+                    data.wires[i].push(-1);
+                }
+            }  
+        }
+
+        if (data.height > height)
+        {
+            //cut ends of level
+            data.room = data.room.splice(0, height);
+            data.wires = data.wires.splice(0, height);
+        } else if (data.height < height)
+        {
+            //add to ends of level
+            for (var i = data.height; i < height; i ++) {
+                var row = new Array(width);
+                row.fill(TILES.wall);
+                data.room.push(row);
+
+                row = new Array(width);
+                row.fill(-1);
+                data.wires.push(row);
+            }
+        }
+
+        data.width = width;
+        data.height = height;
+
+        // if (this.map.worldToTileX(gameScene.player.x) > width-1) gameScene.player.x = this.map.tileToWorldX(width-1+0.5);
+        // if (this.map.worldToTileY(gameScene.player.y) > height-1) gameScene.player.y = this.map.tileToWorldY(height-1+0.5);
+
+        // console.log(this.map.worldToTileX(gameScene.player.x) > width-1, this.map.tileToWorldX(width-1+0.5));
+
+        gameScene.setLevel(new Level(width, height, data.room, data.wires));
     }
 });

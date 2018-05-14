@@ -42,10 +42,12 @@
       <input type="text" placeholder="name", id='level-name'/>
       <a id='download-level' class='button' href="" download='.lvl'><button id='save-level' onclick="gameScene.exportLevel();">Save</button></a>
       <button id='load-level' onclick="gameScene.importLevel();">Load</button>
-      <button id='save-state' onclick="gameScene.level.startData=gameScene.level.getAsData();">Save State</button>
+      <button id='save-state' onclick="gameScene.level.startData=gameScene.level.getAsData();this.blur();">Save State</button>
       <div id='level-select-div'>
         Select Level:
         <select id='level-select'></select>
+        Width:<input type="number" id="level-width" min="1" style="width:40px;" onchange="gameScene.level.setSize(this.value, gameScene.level.map.height);this.blur();">
+        Height:<input type="number" id="level-height" min="1" style="width:40px;" onchange="gameScene.level.setSize(gameScene.level.map.width, this.value);this.blur();">
       </div>
     </div>
   </body>

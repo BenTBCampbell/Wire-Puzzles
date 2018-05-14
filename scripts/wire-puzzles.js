@@ -21,7 +21,7 @@ gameScene.init = function ()
     this.enemySpeed = 2;
     this.enemyMaxY = 280;
     this.enemyMinY = 80;
-    this.tileScale = 4;
+    this.tileScale = 3;
     this.tileSize = 20;//in pixels
     this.tilePlaceCooldown = 20;
     this.timeSinceTilePlaced = this.tilePlaceCooldown;
@@ -131,7 +131,9 @@ gameScene.create = function ()
     this.player.setDepth(1);
 
     //level
-    this.level = new Level( this.mapWidth, this.mapHeight );
+    this.setLevel(new Level( this.mapWidth, this.mapHeight ));
+    document.getElementById('level-width').value = this.mapWidth;
+    document.getElementById('level-height').value = this.mapHeight;
     this.drawTile = TILES.wall;
     this.drawingFlags = false;
     this.drawLogic = "";
@@ -377,7 +379,7 @@ gameScene.importLevel = function()
         var reader = new FileReader();
         reader.onload = function(e) {
             var level = JSON.parse(e.target.result);
-            gameScene.level = new Level(level.width, level.height, level.room, level.wires);
+            gameScene.setLevel(new Level(level.width, level.height, level.room, level.wires));
         }
         reader.readAsText(fileInput.files[0]);
         fileInput.remove();
@@ -393,7 +395,7 @@ gameScene.loadLevel = function (name)
     xmlhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
             var level = JSON.parse(this.responseText);
-            gameScene.level = new Level(level.width, level.height, level.room, level.wires);
+            gameScene.setLevel(new Level(level.width, level.height, level.room, level.wires));
             // myFunction(myArr);
         }
     };
@@ -415,7 +417,13 @@ gameScene.end = function()
 {
     alert ('level finished!');
     var level = this.level.startData;
-    this.level = new Level(level.width, level.height, level.room, level.wires);
+    this.setLevel(new Level(level.width, level.height, level.room, level.wires));
+}
+
+gameScene.setLevel = function(level)
+{
+    if (this.level instanceof Level) this.level.map.destroy();
+    this.level = level;
 }
 
 var parseFlag = function (flag)
@@ -449,8 +457,16 @@ var Player = new Phaser.Class({
     update: function () 
     {
         var map = gameScene.level.map;
-        let tileX = map.tileToWorldX(map.worldToTileX(this.x)+0.5);
-        let tileY = map.tileToWorldY(map.worldToTileY(this.y)+0.5);
+        var mapX = map.worldToTileX(this.x);
+        var mapY = map.worldToTileY(this.y);
+        let tileX = map.tileToWorldX(mapX+0.5);
+        let tileY = map.tileToWorldY(mapY+0.5);
+        
+        // if (mapX >= map.width) this.x = map.tileToWorldX(map.width-0.5);
+        // if (mapX < 0) this.x = map.tileToWorldX(0.5);
+        // if (mapY >= map.height) this.y = map.tileToWorldY(map.height-0.5);
+        // if (mapY < 0) this.y = map.tileToWorldY(0.5);
+
         if (this.x !== tileX) 
         {
             let dx = Math.min(this.speed, Math.abs(tileX - this.x));
@@ -471,7 +487,7 @@ var Player = new Phaser.Class({
         if (this.directionMoving === '')
         {
             var tileBeneath = gameScene.level.room.getTileAtWorldXY(this.x, this.y, true);
-            if (tileBeneath.index === TILES.end) gameScene.end();
+            if (tileBeneath !== null && tileBeneath.index === TILES.end) gameScene.end();
         }
     },
 
